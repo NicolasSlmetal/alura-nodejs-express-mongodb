@@ -1,2 +1,2 @@
-# 2404-api-node-express
-Projeto utilizado no curso da Alura
+# api-node-express-mongodb
+A REST API develop with Alura courses of NodeJS, Express and MongoDB
