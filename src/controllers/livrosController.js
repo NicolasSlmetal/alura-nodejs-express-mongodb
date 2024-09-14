@@ -1,19 +1,18 @@
 import NaoEncontrado from "../erros/NaoEncontrado.js";
-import livros from "../models/Livro.js";
+import RequisicaoIncorreta from "../erros/RequisicaoIncorreta.js";
+import {autores, livros} from "../models/index.js";
 
 class LivroController {
 
   static listarLivros = async (req, res, next) => {
     try {
-      const livrosResultado = await livros.find()
-        .populate("autor")
-        .exec();
-
-      res.status(200).json(livrosResultado);
+        const buscaLivros = livros.find()
+        req.resultado = buscaLivros
+        next()
     } catch (erro) {
       next(erro);
     }
-  };
+  }
 
   static listarLivroPorId = async (req, res, next) => {
     try {
@@ -31,7 +30,27 @@ class LivroController {
     } catch (erro) {
       next(erro);
     }
-  };
+  }
+
+  static async listarLivrosPorFiltro(req, res, next) {
+    try {
+      
+      const queryObject = await processaBusca(req.query);
+      
+      if (queryObject !== null){
+        const livrosResultado = livros.find(queryObject);
+        req.resultado = livrosResultado;
+        next()
+      }else {
+        res.status(200).send([]);
+      }
+      
+      
+    } catch (erro) {
+      next(erro);
+    }
+  
+  }
 
   static cadastrarLivro = async (req, res, next) => {
     try {
@@ -50,8 +69,6 @@ class LivroController {
       const id = req.params.id;
     
       const livroResultado = await livros.findByIdAndUpdate(id, {$set: req.body});
-
-      console.log(livroResultado);
     
       if (livroResultado !== null) {
         res.status(200).send({message: "Livro atualizado com sucesso"});
@@ -95,3 +112,35 @@ class LivroController {
 }
 
 export default LivroController;
+
+async function processaBusca(query) {
+  let queryObject = {};
+  const { editora, titulo, minPaginas, maxPaginas, nomeAutor } = query;
+  if (editora) {
+    queryObject.editora = editora;
+  }
+  if (titulo) {
+    queryObject.titulo = { $regex: titulo, $options: "i" };
+  }
+  if (minPaginas) {
+    queryObject.numeroPaginas = { $gte: minPaginas };
+  }
+  if (maxPaginas) {
+    queryObject.numeroPaginas = { $lte: maxPaginas };
+  }
+  if (maxPaginas && minPaginas) {
+    queryObject.numeroPaginas = {
+      $gte: minPaginas,
+      $lte: maxPaginas
+    };
+  }
+  if (nomeAutor) {
+    const autor = await autores.findOne({ nome: nomeAutor });
+    if (autor !== null) {
+      queryObject.autor = autor._id;
+    } else {
+      queryObject = null
+    }
+  }
+  return queryObject;
+}
